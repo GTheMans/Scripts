@@ -1,0 +1,22 @@
+# === Input Lock/Unlock Controller ===
+
+# Load User32.dll for BlockInput
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class User32 {
+    [DllImport("user32.dll")]
+    public static extern bool BlockInput(bool fBlockIt);
+}
+"@
+
+# LOCK input immediately
+[User32]::BlockInput($true)
+
+# Wait 30 seconds (adjustable)
+Start-Sleep -Seconds 30
+
+# UNLOCK input
+[User32]::BlockInput($false)
+
+exit
