@@ -29,6 +29,4 @@ Write-Host "Video is playing in full-screen..."
 
 # Wait for the video to finish (14 seconds)
 Start-Sleep -Seconds 14
-
-Write-Host "Test completed. Press Enter to close PowerShell manually."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+exit
