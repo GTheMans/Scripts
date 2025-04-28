@@ -14,7 +14,7 @@ public class User32 {
 [User32]::BlockInput($true)
 
 # Wait 30 seconds (adjustable)
-Start-Sleep -Seconds 30
+Start-Sleep -Seconds 20
 
 # UNLOCK input
 [User32]::BlockInput($false)
