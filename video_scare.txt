@@ -1,0 +1,34 @@
+# Set Execution Policy to allow running scripts
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
+# Output to confirm the script is starting
+Write-Host "Starting script..."
+
+# 1. Download Skull Laugh Video from GitHub (use the raw URL)
+$downloadUrl = "https://github.com/GTheMans/Scripts/raw/main/Welcome_to_the_Game_-_Hacking_Alert%20(1).mp4"
+$videoPath = "$env:TEMP\skull.mp4"
+
+Write-Host "Downloading video..."
+Invoke-WebRequest -Uri $downloadUrl -OutFile $videoPath
+
+# Check if the video exists
+if (-Not (Test-Path $videoPath)) {
+    Write-Host "Error: Video download failed. The file does not exist at $videoPath"
+    exit
+}
+
+Write-Host "Video downloaded successfully. File is located at: $videoPath"
+
+# 2. Use Windows Media Player to play the video in full-screen mode
+Write-Host "Using Windows Media Player to play the video..."
+
+# Launch Windows Media Player in full-screen mode
+Start-Process "wmplayer.exe" -ArgumentList "/fullscreen", "$videoPath"
+
+Write-Host "Video is playing in full-screen..."
+
+# Wait for the video to finish (14 seconds)
+Start-Sleep -Seconds 14
+
+Write-Host "Test completed. Press Enter to close PowerShell manually."
+$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
