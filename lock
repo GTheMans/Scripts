@@ -1,6 +1,5 @@
-# === Input Lock/Unlock Controller ===
+# === Input Lock and Self-Termination ===
 
-# Load User32.dll
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -13,10 +12,13 @@ public class User32 {
 # Lock input immediately
 [User32]::BlockInput($true)
 
-# Sleep 30 seconds
-Start-Sleep -Seconds 30
+# Wait 25 seconds
+Start-Sleep -Seconds 25
 
 # Unlock input
 [User32]::BlockInput($false)
+
+# Kill all powershell processes (including itself)
+Stop-Process -Name "powershell" -Force -ErrorAction SilentlyContinue
 
 exit
