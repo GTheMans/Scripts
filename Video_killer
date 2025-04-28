@@ -1,0 +1,14 @@
+# === Wait for Video to Play ===
+Start-Sleep -Seconds 25
+
+# === Close Known Media Players ===
+$targets = @("wmplayer", "vlc", "Movies&TV", "mpc-hc64")
+
+foreach ($processName in $targets) {
+    Get-Process -Name $processName -ErrorAction SilentlyContinue | ForEach-Object {
+        $_.CloseMainWindow()
+        $_.Kill()
+    }
+}
+
+exit
