@@ -1,4 +1,4 @@
-# === Lock Input Functions ===
+# === Import Input Lock Functions ===
 
 Add-Type @"
 using System;
@@ -26,16 +26,16 @@ Write-Host "Mouse movement detected! Initiating scare sequence..."
 [User32]::BlockInput($true)
 Write-Host "Input locked."
 
-# === Start Independent Failsafe Unlock ===
+# === Start Independent Failsafe Unlock Timer ===
 
 Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -Command `"Start-Sleep -Seconds 30; Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class User32 { [DllImport(\""user32.dll\"")] public static extern bool BlockInput(bool fBlockIt); }'; [User32]::BlockInput(\$false)`""
 Write-Host "Failsafe Unlock Timer Launched (External Process, 30s)."
 
-# === Fake crash popup ===
+# === Fake crash screen ===
 Add-Type -AssemblyName PresentationFramework
 [System.Windows.MessageBox]::Show("CRITICAL_SYSTEM_FAILURE (0x00000F4) - Windows has encountered a critical error and must shut down.", "System Error", "OK", "Error")
 
-# 3 second dramatic delay after crash popup
+# 3 second dramatic pause after crash
 Start-Sleep -Seconds 3
 
 # === Play Horror Video ===
@@ -49,7 +49,7 @@ Invoke-WebRequest -Uri $videoUrl -OutFile $videoPath -UseBasicParsing
 
 Write-Host "Video downloaded successfully. Playing now..."
 
-# Launch video in full-screen
+# Play video full screen
 $player = New-Object -ComObject WMPlayer.OCX
 $media = $player.newMedia($videoPath)
 $player.currentPlaylist.appendItem($media)
@@ -60,20 +60,20 @@ $player.fullScreen = $true
 # Wait for video playback (15 seconds)
 Start-Sleep -Seconds 15
 
-# Stop and close player after video
+# Stop and close player
 $player.controls.stop()
 $player.close()
 [System.Runtime.Interopservices.Marshal]::ReleaseComObject($player) | Out-Null
 Remove-Variable player
 
-Write-Host "Video playback completed. WMP closed cleanly."
+Write-Host "Video finished and WMP closed."
 
 # 5 second buffer after video
 Start-Sleep -Seconds 5
 
-# Manual unlock input (even though failsafe exists)
+# Manual unlock attempt (backup)
 [User32]::BlockInput($false)
-Write-Host "Input manually unlocked after 20 seconds."
+Write-Host "Input manually unlocked after 20 seconds total."
 
 # Exit script cleanly
 exit
