@@ -1,79 +1,32 @@
-# === Import Input Lock Functions ===
+# Set Execution Policy to allow running scripts
+Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class User32 {
-    [DllImport("user32.dll")]
-    public static extern bool BlockInput(bool fBlockIt);
-}
-"@
+# Output to confirm the script is starting
+Write-Host "Starting script..."
 
-Write-Host "Video Scare Script Started..."
-
-# Wait for mouse movement
-Add-Type -AssemblyName System.Windows.Forms
-$initialPosition = [System.Windows.Forms.Cursor]::Position
-Write-Host "Waiting for mouse movement to trigger..."
-do {
-    Start-Sleep -Milliseconds 500
-    $currentPosition = [System.Windows.Forms.Cursor]::Position
-} while ($initialPosition.X -eq $currentPosition.X -and $initialPosition.Y -eq $currentPosition.Y)
-
-Write-Host "Mouse movement detected! Initiating scare sequence..."
-
-# Immediately lock input
-[User32]::BlockInput($true)
-Write-Host "Input locked."
-
-# === Start Independent Failsafe Unlock Timer ===
-
-Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -Command `"Start-Sleep -Seconds 30; Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class User32 { [DllImport(\""user32.dll\"")] public static extern bool BlockInput(bool fBlockIt); }'; [User32]::BlockInput(\$false)`""
-Write-Host "Failsafe Unlock Timer Launched (External Process, 30s)."
-
-# === Fake crash screen ===
-Add-Type -AssemblyName PresentationFramework
-[System.Windows.MessageBox]::Show("CRITICAL_SYSTEM_FAILURE (0x00000F4) - Windows has encountered a critical error and must shut down.", "System Error", "OK", "Error")
-
-# 3 second dramatic pause after crash
-Start-Sleep -Seconds 3
-
-# === Play Horror Video ===
-
-# Download video file
-$videoUrl = "https://github.com/GTheMans/Scripts/raw/refs/heads/main/skull.mp4"
+# 1. Download Skull Laugh Video from GitHub (use the raw URL)
+$downloadUrl = "https://github.com/GTheMans/Scripts/raw/main/Welcome_to_the_Game_-_Hacking_Alert%20(1).mp4"
 $videoPath = "$env:TEMP\skull.mp4"
 
-Write-Host "Downloading horror video..."
-Invoke-WebRequest -Uri $videoUrl -OutFile $videoPath -UseBasicParsing
+Write-Host "Downloading video..."
+Invoke-WebRequest -Uri $downloadUrl -OutFile $videoPath
 
-Write-Host "Video downloaded successfully. Playing now..."
+# Check if the video exists
+if (-Not (Test-Path $videoPath)) {
+    Write-Host "Error: Video download failed. The file does not exist at $videoPath"
+    exit
+}
 
-# Play video full screen
-$player = New-Object -ComObject WMPlayer.OCX
-$media = $player.newMedia($videoPath)
-$player.currentPlaylist.appendItem($media)
-$player.settings.setMode("loop", $false)
-$player.controls.play()
-$player.fullScreen = $true
+Write-Host "Video downloaded successfully. File is located at: $videoPath"
 
-# Wait for video playback (15 seconds)
-Start-Sleep -Seconds 15
+# 2. Use Windows Media Player to play the video in full-screen mode
+Write-Host "Using Windows Media Player to play the video..."
 
-# Stop and close player
-$player.controls.stop()
-$player.close()
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($player) | Out-Null
-Remove-Variable player
+# Launch Windows Media Player in full-screen mode
+Start-Process "wmplayer.exe" -ArgumentList "/fullscreen", "$videoPath"
 
-Write-Host "Video finished and WMP closed."
+Write-Host "Video is playing in full-screen..."
 
-# 5 second buffer after video
-Start-Sleep -Seconds 5
-
-# Manual unlock attempt (backup)
-[User32]::BlockInput($false)
-Write-Host "Input manually unlocked after 20 seconds total."
-
-# Exit script cleanly
+# Wait for the video to finish (14 seconds)
+Start-Sleep -Seconds 14
 exit
