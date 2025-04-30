@@ -1,10 +1,10 @@
-# Set Execution Policy to allow running scripts
+# === Set Execution Policy ===
 Set-ExecutionPolicy RemoteSigned -Scope Process -Force
 
-Write-Host "=== Video Scare Script ==="
+Write-Host "=== Full Video Scare Activated ==="
 
-# 0. Wait for mouse movement
-Write-Host "Waiting for mouse movement to trigger..."
+# === 0. Wait for mouse movement ===
+Write-Host "Waiting for mouse movement..."
 Add-Type -AssemblyName System.Windows.Forms
 $initialPosition = [System.Windows.Forms.Cursor]::Position
 do {
@@ -12,33 +12,71 @@ do {
     $currentPosition = [System.Windows.Forms.Cursor]::Position
 } while ($initialPosition.X -eq $currentPosition.X -and $initialPosition.Y -eq $currentPosition.Y)
 
-Write-Host "Mouse movement detected. Starting payload..."
+Write-Host "Mouse moved. Initiating sequence..."
 
-# 1. Download Skull Laugh Video from GitHub
+# === 1. Pause before lock ===
+Start-Sleep -Seconds 2
+
+# === 2. Lock input (keyboard & mouse) ===
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class InputLocker {
+    [DllImport("user32.dll")]
+    public static extern bool BlockInput(bool fBlockIt);
+}
+"@
+[InputLocker]::BlockInput($true)
+Write-Host "Input locked."
+
+# === 3. Show fake error in command window (auto-close) ===
+Start-Job {
+    $errorText = "A critical error has occurred.
+System file: C:\Windows\System32\config\SYSTEM
+Error code: 0x0000EF01
+Terminating shell in 3 seconds..."
+
+    $temp = "$env:TEMP\err_fake.bat"
+    $errorText | Out-File -Encoding ASCII -FilePath $temp
+    Start-Process -WindowStyle Normal -FilePath "cmd.exe" -ArgumentList "/c type `"$temp`" & timeout /t 3 >nul"
+    Start-Sleep -Seconds 4
+    Remove-Item $temp -Force -ErrorAction SilentlyContinue
+} | Out-Null
+
+Start-Sleep -Seconds 4
+
+# === 4. Download video from GitHub ===
 $downloadUrl = "https://github.com/GTheMans/Scripts/raw/main/Welcome_to_the_Game_-_Hacking_Alert%20(1).mp4"
 $videoPath = "$env:TEMP\skull.mp4"
-
 Write-Host "Downloading video..."
 Invoke-WebRequest -Uri $downloadUrl -OutFile $videoPath
 
-# Check if the video exists
 if (-Not (Test-Path $videoPath)) {
-    Write-Host "Error: Video download failed. The file does not exist at $videoPath"
+    Write-Host "Error: Video download failed."
+    [InputLocker]::BlockInput($false)
     exit
 }
+Write-Host "Video downloaded."
 
-Write-Host "Video downloaded successfully. File is located at: $videoPath"
-
-# 2. Use Windows Media Player to play the video in full-screen mode
-Write-Host "Using Windows Media Player to play the video..."
+# === 5. Launch video fullscreen ===
 Start-Process "wmplayer.exe" -ArgumentList "/fullscreen", "$videoPath"
+Write-Host "Scare video launched."
 
-Write-Host "Video is playing in full-screen..."
-
-# Wait for the video to finish (14 seconds)
+# === 6. Wait for 14s while video plays ===
 Start-Sleep -Seconds 14
 
-# Optionally delete the video file
-# Remove-Item -Path $videoPath -Force -ErrorAction SilentlyContinue
+# === 7. Force-close media player & delete video ===
+Get-Process -Name "wmplayer" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process -Name "vlc" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
+Remove-Item -Path $videoPath -Force -ErrorAction SilentlyContinue
+Write-Host "Player killed and video file deleted."
+
+# === 8. Extra 3 seconds before unlocking input ===
+Start-Sleep -Seconds 3
+[InputLocker]::BlockInput($false)
+Write-Host "Input unlocked."
+
+# === 9. Exit ===
+Write-Host "Mission complete. Exiting."
 exit
